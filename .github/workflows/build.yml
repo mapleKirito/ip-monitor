@@ -2,7 +2,7 @@ name: 跨平台打包
 
 on:
   push:
-    branches: [ main, release ]
+    branches: [ release ]
   workflow_dispatch:
 
 jobs:
