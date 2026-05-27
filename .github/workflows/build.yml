@@ -1,0 +1,58 @@
+name: 跨平台打包
+
+on:
+  push:
+    branches: [ main, release ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            extension: .exe
+          - os: ubuntu-latest
+            platform: linux
+            extension: ""
+          - os: macos-latest
+            platform: macos
+            extension: ""
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: 设置 Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+
+    - name: 打包 Windows
+      if: matrix.platform == 'windows'
+      run: |
+        pyinstaller --onefile --windowed --name IPMonitor main.py
+
+    - name: 打包 Linux
+      if: matrix.platform == 'linux'
+      run: |
+        pyinstaller --onefile --windowed --name IPMonitor main.py
+
+    - name: 打包 macOS
+      if: matrix.platform == 'macos'
+      run: |
+        pyinstaller --onefile --windowed --name IPMonitor main.py
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: IPMonitor-${{ matrix.platform }}
+        path: |
+          dist/IPMonitor${{ matrix.extension }}
+          config.json
