@@ -13,13 +13,19 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            extension: .exe
+            artifact_name: IPMonitor-Windows
+            archive_cmd: Compress-Archive -Path "dist/IPMonitor.exe" -DestinationPath "IPMonitor-Windows.zip"
+            archive_ext: .zip
           - os: ubuntu-latest
             platform: linux
-            extension: ""
+            artifact_name: IPMonitor-Linux
+            archive_cmd: tar -czf IPMonitor-Linux.tar.gz -C dist IPMonitor
+            archive_ext: .tar.gz
           - os: macos-latest
             platform: macos
-            extension: ""
+            artifact_name: IPMonitor-macOS
+            archive_cmd: tar -czf IPMonitor-macOS.tar.gz -C dist IPMonitor
+            archive_ext: .tar.gz
 
     steps:
     - uses: actions/checkout@v4
@@ -34,25 +40,72 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    - name: 打包 Windows
-      if: matrix.platform == 'windows'
+    - name: 编译 PyInstaller
       run: |
         pyinstaller --onefile --windowed --name IPMonitor main.py
 
-    - name: 打包 Linux
-      if: matrix.platform == 'linux'
-      run: |
-        pyinstaller --onefile --windowed --name IPMonitor main.py
-
-    - name: 打包 macOS
-      if: matrix.platform == 'macos'
-      run: |
-        pyinstaller --onefile --windowed --name IPMonitor main.py
+    - name: 打包压缩
+      run: ${{ matrix.archive_cmd }}
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: IPMonitor-${{ matrix.platform }}
+        name: ${{ matrix.artifact_name }}
         path: |
-          dist/IPMonitor${{ matrix.extension }}
+          IPMonitor-${{ matrix.platform }}${{ matrix.archive_ext }}
           config.json
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: 下载 Windows 产物
+      uses: actions/download-artifact@v4
+      with:
+        name: IPMonitor-Windows
+        path: artifacts/windows
+
+    - name: 下载 Linux 产物
+      uses: actions/download-artifact@v4
+      with:
+        name: IPMonitor-Linux
+        path: artifacts/linux
+
+    - name: 下载 macOS 产物
+      uses: actions/download-artifact@v4
+      with:
+        name: IPMonitor-macOS
+        path: artifacts/macos
+
+    - name: 整理发布文件
+      run: |
+        mkdir -p release
+        cp artifacts/windows/*.zip release/
+        cp artifacts/linux/*.tar.gz release/
+        cp artifacts/macos/*.tar.gz release/
+        cp artifacts/windows/config.json release/
+        ls -lh release/
+
+    - name: 获取版本号
+      id: get_version
+      run: |
+        VERSION=release-$(date +%Y%m%d-%H%M%S)
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: 创建 GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        name: IP Monitor v${{ steps.get_version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        files: |
+          release/*.zip
+          release/*.tar.gz
+          release/config.json
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
