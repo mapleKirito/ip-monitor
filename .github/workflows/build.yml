@@ -51,7 +51,6 @@ jobs:
         path: |
           IPMonitor-${{ matrix.platform }}.zip
           IPMonitor-${{ matrix.platform }}.tar.gz
-          config.json
 
   release:
     needs: build
@@ -83,7 +82,6 @@ jobs:
         mkdir -p release
         find artifacts -name "*.zip" -exec cp {} release/ \;
         find artifacts -name "*.tar.gz" -exec cp {} release/ \;
-        cp artifacts/config.json release/ 2>/dev/null || true
         ls -lh release/
 
     - name: 获取版本号
@@ -103,6 +101,5 @@ jobs:
         files: |
           release/*.zip
           release/*.tar.gz
-          release/config.json
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
