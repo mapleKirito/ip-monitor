@@ -15,14 +15,17 @@ jobs:
             platform: windows
             artifact_name: IPMonitor-Windows
             archive_cmd: Compress-Archive -Path "dist/IPMonitor.exe" -DestinationPath "IPMonitor-Windows.zip"
+            archive_file: "IPMonitor-Windows.zip"
           - os: ubuntu-latest
             platform: linux
             artifact_name: IPMonitor-Linux
             archive_cmd: tar -czf IPMonitor-Linux.tar.gz -C dist IPMonitor
+            archive_file: "IPMonitor-Linux.tar.gz"
           - os: macos-latest
             platform: macos
             artifact_name: IPMonitor-macOS
             archive_cmd: tar -czf IPMonitor-macOS.tar.gz -C dist IPMonitor
+            archive_file: "IPMonitor-macOS.tar.gz"
 
     steps:
     - uses: actions/checkout@v4
@@ -48,9 +51,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}
-        path: |
-          IPMonitor-${{ matrix.platform }}.zip
-          IPMonitor-${{ matrix.platform }}.tar.gz
+        path: ${{ matrix.archive_file }}
 
   release:
     needs: build
@@ -59,25 +60,12 @@ jobs:
       contents: write
 
     steps:
-    - name: 下载 Windows 产物
+    - name: 下载所有构建产物
       uses: actions/download-artifact@v4
       with:
-        name: IPMonitor-Windows
         path: artifacts
 
-    - name: 下载 Linux 产物
-      uses: actions/download-artifact@v4
-      with:
-        name: IPMonitor-Linux
-        path: artifacts
-
-    - name: 下载 macOS 产物
-      uses: actions/download-artifact@v4
-      with:
-        name: IPMonitor-macOS
-        path: artifacts
-
-    - name: 查找并整理发布文件
+    - name: 整理发布文件
       run: |
         mkdir -p release
         find artifacts -name "*.zip" -exec cp {} release/ \;
